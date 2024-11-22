@@ -59,28 +59,33 @@ export class AccountTransactionService implements AbstractAccountTransactionSvc 
   }
 
   async creditBulkTrasacations(creditBulkAmount:CreditTransactionDto[]):Promise<AppResponse>{
-    let multipleUpdate = [];
-    for(let customer of creditBulkAmount){
-      const validateData = await this.validateCustomerTrasactionsData(customer);
-      if(validateData.code === 200){
-        const data = await this._transactionsTxn.creditTransaction(customer)
-        multipleUpdate.push(data)
+    const multipleUpdate:any = await Promise.all(creditBulkAmount.map(async (customer) => {
+      const validationResponse = await this.validateCustomerTrasactionsData(customer);
+
+      if (validationResponse.code === 200) {
+        return await this._transactionsTxn.creditTransaction(customer) 
+      } else {
+         return createResponse(HttpStatus.BAD_REQUEST, 'Validation failed for customer.');
       }
     }
-    return createResponse(HttpStatus.OK, messages.S30, multipleUpdate);
+  ));
+
+    return multipleUpdate;
   }
 
   async debitBulkTrasacations(debitBulkAmount:any):Promise<AppResponse>{
-    let multipleUpdate = [];
-    for(let customer of debitBulkAmount){
-      const validateData = await this.validateCustomerTrasactionsData({...customer,"transactionType":"debit"});
-      console.log(customer,validateData)
-      if(validateData.code === 200){
-        const data = await this._transactionsTxn.debitTransaction(customer)
-        multipleUpdate.push(data)
+    const multipleUpdate:any = await Promise.all( debitBulkAmount.map(async (customer) => {
+        const validationResponse = await this.validateCustomerTrasactionsData({...customer,"transactionType":"debit"});
+  
+        if (validationResponse.code === 200) {
+          return await this._transactionsTxn.debitTransaction(customer) 
+        } else {
+           return createResponse(HttpStatus.BAD_REQUEST, 'Validation failed for customer.');
+        }
       }
-    }
-    return createResponse(HttpStatus.OK, messages.S30, multipleUpdate);
+    ));
+  
+    return multipleUpdate;
   }
 
   async fetchCustomerTrasactions(accountNumber:string):Promise<AppResponse>{

@@ -13,3 +13,17 @@ export enum DataType {
 	SMALLINT = 'SMALLINT',
 	NOW = 'NOW'         
 }
+
+export enum AccountType {
+   SAVINGS = 'SAVINGS',
+   CURRENT = 'CURRENT', 
+   FIXED_DEPOSIT = 'FIXED_DEPOSIT'
+}
+
+export enum IFSCCode{
+	IFSCCode = 'IFSC0001'
+}
+
+export enum RegistrationStatus{
+	RegistrationStatus = 'Verified'
+}

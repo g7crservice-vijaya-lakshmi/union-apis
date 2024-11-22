@@ -14,7 +14,7 @@ export class AccountTransactionController {
     private readonly _loggerSvc: AppLogger
   ) {}
   
-  @Get('fetch-customerdata/:account-number?')
+  @Get('fetch-customerdata')
   fetchCustomer(@Param('accountNumber') accountNumber: string) {
     return this.accountTransactionService.fetchCustomerTrasactions(accountNumber);
   }

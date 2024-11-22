@@ -44,11 +44,11 @@ class BankCustomer extends Model<BankCustomer> {
   @Column({ type: `${DataType.VARCHAR}(20)`, allowNull: false })
   PanNumber: string;  
 
-  @Column({ type: DataType.DATE, allowNull: false })
-  DateOfBirth: Date;
+  // @Column({ type: DataType.DATE, allowNull: false })
+  // DateOfBirth: Date;
 
-  @Column({ type: DataType.DATE, defaultValue: new Date() })
-  CreatedDate: Date;
+  // @Column({ type: DataType.DATE, defaultValue: new Date() })
+  // CreatedDate: Date;
 
   @Column({ type: Dt.DECIMAL(18, 2), allowNull: false, defaultValue: 0.00,validate: {
     isPositive(value: number) {

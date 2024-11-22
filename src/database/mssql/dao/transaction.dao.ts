@@ -14,7 +14,7 @@ import { CreditTransactionDto, DebitTransactionDto } from "@app/modules/account-
 export class TrasactionSqlDao implements AbstractAccountTransactionSQlDao {
   constructor(
     @Inject(MsSqlConstants.CUSTOMER_MODEL) private readonly _customers: typeof BankCustomer,
-    @Inject(MsSqlConstants.BANK_TRANSACTION_MODEL) private readonly _bankRegister: typeof BankRegistration,
+    @Inject(MsSqlConstants.BANK_REGISTRATIONS_MODEL) private readonly _bankRegister: typeof BankRegistration,
     @Inject(MsSqlConstants.BANK_TRANSACTION_MODEL) private readonly _bankTransaction: typeof BankTransaction,
     @Inject(MsSqlConstants.SEQUELIZE_PROVIDER) private _sequelize: Sequelize,
     private readonly _loggerSvc: AppLogger
@@ -31,11 +31,11 @@ export class TrasactionSqlDao implements AbstractAccountTransactionSQlDao {
 
   async fetchCustomerAccountDetails(accountNumber: string): Promise<AppResponse> {
     try {
-      const customerData = await BankRegistration.findOne({
+      const customerData = await this._bankRegister.findOne({
         attributes: ['BANKRegistrationId', 'AccountNumber', 'IFSCCode'],
         include: [
           {
-            model: BankCustomer,
+            model: this._customers,
             attributes: ['CustomerId', 'CustomerName', 'Email', 'PhoneNumber', 'Address', 'BalanceAmount'],
           }
         ],
@@ -79,6 +79,10 @@ export class TrasactionSqlDao implements AbstractAccountTransactionSQlDao {
           TransactionType: 'Credit',
           BANKRegistrationId: bankRegistrationData.data.BANKRegistrationId,
         })
+        
+        t.afterCommit(() => {
+          this._loggerSvc.log(messages.S4, 200);
+        }); 
 
         return bankRegistrationData;
       });
@@ -103,9 +107,8 @@ export class TrasactionSqlDao implements AbstractAccountTransactionSQlDao {
           }
         );
 
-
         if (debitAmount[0] === 0) {
-          return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, messages.E2);
+          throw new Error('No customer found or balance update failed');
         }
 
         const bankRegistrationData = await this.fetchCustomerAccountDetails(debitAmountCustomer.accountNumber);
@@ -115,8 +118,12 @@ export class TrasactionSqlDao implements AbstractAccountTransactionSQlDao {
           TransactionType: 'Debit',
           BANKRegistrationId: bankRegistrationData.data.BANKRegistrationId,
         })
+         
+        t.afterCommit(() => {
+            this._loggerSvc.log(messages.S4, 200);
+        });
 
-        return bankRegistrationData;
+        return bankRegistrationData
       });
       return createResponse(HttpStatus.OK, messages.S30, data.data.customer.BalanceAmount);
     } catch (err) {
