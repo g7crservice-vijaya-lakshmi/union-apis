@@ -88,6 +88,7 @@ export class TrasactionSqlDao implements AbstractAccountTransactionSQlDao {
       });
       return createResponse(HttpStatus.OK, messages.S29, data.data.customer.BalanceAmount);
     } catch (err) {
+      console.log(err)
       return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, messages.E2);
     }
   }
@@ -127,18 +128,83 @@ export class TrasactionSqlDao implements AbstractAccountTransactionSQlDao {
       });
       return createResponse(HttpStatus.OK, messages.S30, data.data.customer.BalanceAmount);
     } catch (err) {
+      console.log(err)
       return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, messages.E2);
     }
   }
 
-  async fetchCustomerTrasactions(accountNumber:string):Promise<AppResponse>{
+  async fetchCustomerTrasactions(accountNumber?:string):Promise<AppResponse>{
+    let whereCondition = {};
+
+    if(accountNumber){
+      whereCondition = {
+       [BankRegistrationColumns.AccountNumber]: accountNumber,
+      }
+    }
+
     const customersTrasactions = await this._bankTransaction.findAll({
       attributes:[BankTransactionColumns.Amount,BankTransactionColumns.TransactionType],
       include:{
         model:this._bankRegister,
-        attributes:[BankRegistrationColumns.AccountNumber,BankRegistrationColumns.AccountType,BankRegistrationColumns.IFSCCode]
+        attributes:[BankRegistrationColumns.AccountNumber,BankRegistrationColumns.AccountType,BankRegistrationColumns.IFSCCode],
+        where:whereCondition
       }
     })
   return createResponse(HttpStatus.OK, messages.S4, customersTrasactions);
   } 
+
+  async debitBulkAmountOfData(creditBulkTransactions: any, batchSize: number): Promise<AppResponse> {
+    try {
+      const results = [];
+      for (let i = 0; i < creditBulkTransactions.length; i += batchSize) {
+        const batch = creditBulkTransactions.slice(i, i + batchSize);
+  
+        const batchResults = await Promise.all(
+          batch.map(async (customer) => {
+            const validationResponse = await this.debitTransaction(customer);
+  
+            if (validationResponse.code !== 200) {
+              return Promise.reject(createResponse(HttpStatus.BAD_REQUEST, 'Error occurred while processing debit amount'));
+            }
+            return { accountNumber: customer.accountNumber, totalAmount: validationResponse.data };
+          })
+        );
+  
+        results.push(...batchResults);
+      }
+      console.log(results);
+      return createResponse(HttpStatus.OK, messages.S30, results);
+    } catch (err) {
+      console.error(err);
+      return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, messages.E2);
+    }
+  }
+  
+  async creditBulkAmountOfData(creditBulkTransactions: any, batchSize: number): Promise<AppResponse> {
+    try {
+      const results = [];
+      for (let i = 0; i < creditBulkTransactions.length; i += batchSize) {
+        const batch = creditBulkTransactions.slice(i, i + batchSize);
+  
+        const batchResults = await Promise.all(
+          batch.map(async (customer) => {
+            const validationResponse = await this.creditTransaction(customer);
+  
+            if (validationResponse.code !== 200) {
+              return Promise.reject(createResponse(HttpStatus.BAD_REQUEST, 'Error occurred while processing credit amount'));
+            }
+            return { accountNumber: customer.accountNumber, totalAmount: validationResponse.data };
+          })
+        );
+  
+        results.push(...batchResults);
+      }
+      console.log(results);
+      return createResponse(HttpStatus.OK, messages.S29, results);
+    } catch (err) {
+      console.error(err);
+      return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, messages.E2);
+    }
+  }
+  
 }

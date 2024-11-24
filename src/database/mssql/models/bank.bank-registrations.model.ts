@@ -43,11 +43,8 @@ class BankRegistration extends Model<BankRegistration> {
   @Column({ type: `${DataType.VARCHAR}(20)`, allowNull: false })
   RegistrationStatus: string;
 
-  @Column({ type: DataType.DATE, defaultValue: DataType.NOW })
-  RegistrationDate: Date;
-
-  @Column({ type: DataType.DATE, allowNull: true })
-  VerificationDate: Date;
+  @Column({ type: DataType.DATE, defaultValue: new Date() })
+  RegistrationDate: String;
 
   @BelongsTo(() => BankCustomer,{
     foreignKey: BankRegistrationColumns.CustomerId,

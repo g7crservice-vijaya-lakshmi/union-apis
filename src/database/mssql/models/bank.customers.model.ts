@@ -3,7 +3,6 @@ import { Column, Model, Table, HasMany, PrimaryKey, AutoIncrement, HasOne,DataTy
 import { Schema } from '../connection/schmeas.mssql';
 import { Tables } from '../connection/tables.mssql';
 import { BankRegistration } from './bank.bank-registrations.model'; 
-import { BankTransaction } from './bank.bank-transactions.model'; 
 
 const enum BankCustomerColumns {
   CustomerId = 'CustomerId',
@@ -44,11 +43,8 @@ class BankCustomer extends Model<BankCustomer> {
   @Column({ type: `${DataType.VARCHAR}(20)`, allowNull: false })
   PanNumber: string;  
 
-  // @Column({ type: DataType.DATE, allowNull: false })
-  // DateOfBirth: Date;
-
-  // @Column({ type: DataType.DATE, defaultValue: new Date() })
-  // CreatedDate: Date;
+  @Column({ type: DataType.DATE, defaultValue: new Date().toISOString() })
+  CreatedDate: Date;
 
   @Column({ type: Dt.DECIMAL(18, 2), allowNull: false, defaultValue: 0.00,validate: {
     isPositive(value: number) {
@@ -65,10 +61,6 @@ class BankCustomer extends Model<BankCustomer> {
   })
   bankRegistration: BankRegistration;
 
-  // @HasMany(() => BankTransaction,{
-  //   as:'bankTransactions'
-  // })
-  // bankTransactions: BankTransaction[];
 }
 
 export { BankCustomer, BankCustomerColumns };

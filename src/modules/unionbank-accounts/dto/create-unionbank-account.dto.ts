@@ -68,11 +68,5 @@ import { messageFactory, messages } from '@app/shared/messages.shared';
     @Matches(CommonRegExp.PHONE_REGEXP, { message: 'Phone number must be a valid Indian mobile number' })
     phoneNumber: string; 
 
-    // @ApiProperty({
-    //   description: 'Date of birth of the account holder',
-    //   example: '1990-01-01',
-    // })
-    // @IsDate()
-    // DateOfBirth: Date;
   }
   

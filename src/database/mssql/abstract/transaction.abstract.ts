@@ -7,4 +7,6 @@ export abstract class AbstractAccountTransactionSQlDao{
     abstract fetchTrasactionData(regId:number):Promise<AppResponse>;
     abstract fetchCustomerAccountDetails(accountNumber:string):Promise<AppResponse>;
     abstract fetchCustomerTrasactions(accountNumber:string):Promise<AppResponse>;
+    abstract creditBulkAmountOfData(creditBulkAmount:any,batchSize:number):Promise<AppResponse>;
+    abstract debitBulkAmountOfData(debitBulkAmountOfData:any, batchSize:number)
 }

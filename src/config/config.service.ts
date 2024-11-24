@@ -15,6 +15,13 @@ export class AppConfigService {
 				host: process.env.MSSQL_SERVER,
 				port: Number(process.env.MSSQL_PORT),
 				trustServerCertificate: Boolean(process.env.MSSQL_TRUST_SERVER_CERTIFICATE),
+				pool: {
+					max: 5,       
+					min: 3,       
+					acquire: 60000, 
+					idle: 10000 
+				  }
+				  
 			}
 		};
 
