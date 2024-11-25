@@ -17,31 +17,6 @@ export class AccountTransactionService implements AbstractAccountTransactionSvc 
     this._transactionsTxn = _dbSvc.trascationSqlTxn;
   }
 
-  async creditTransaction(creaditAmount:CreditTransactionDto):Promise<AppResponse> {
-    const customerAccountData = await this._transactionsTxn.fetchCustomerAccountDetails(creaditAmount.accountNumber);
-    if(!customerAccountData) return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, messages.E2);
-
-    if(customerAccountData.data.customer.CustomerName !== creaditAmount.CustomerName){
-       return createResponse(HttpStatus.BAD_REQUEST, messageFactory(messages.E13, ['CustomerName']));
-    }
-      return await this._transactionsTxn.creditTransaction(creaditAmount)
-  }
-
-  async debitTransaction(debitAmount:DebitTransactionDto):Promise<AppResponse> {
-    const customerAccountData = await this._transactionsTxn.fetchCustomerAccountDetails(debitAmount.accountNumber);
-    if(!customerAccountData) return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, messages.E2);
-
-    if(customerAccountData.data.customer.CustomerName !== debitAmount.CustomerName){
-       return createResponse(HttpStatus.BAD_REQUEST, messageFactory(messages.E13, ['CustomerName']));
-    }
-    
-    if (Number(debitAmount.amount) > customerAccountData.data.customer.BalanceAmount) {
-      return createResponse(HttpStatus.OK, "You don't have sufficient amount to debit the amount.");
-    }
-    
-    return await this._transactionsTxn.debitTransaction(debitAmount);
-  }
-
   async validateCustomerTrasactionsData(creaditAmount:CreditTransactionDto){
       const customerAccountData = await this._transactionsTxn.fetchCustomerAccountDetails(creaditAmount.accountNumber);
        if(!customerAccountData) return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, messages.E2);
@@ -49,41 +24,113 @@ export class AccountTransactionService implements AbstractAccountTransactionSvc 
       if(customerAccountData.data.customer.CustomerName !== creaditAmount.CustomerName){
        return createResponse(HttpStatus.BAD_REQUEST, messageFactory(messages.E13, ['CustomerName']));
       }
-
+    
       if(creaditAmount.transactionType === "debit"){
-        if (Number(creaditAmount.amount) > customerAccountData.data.customer.BalanceAmount) {
-          return createResponse(HttpStatus.OK, "You don't have sufficient amount to debit the amount.");
+        if (creaditAmount.amount > customerAccountData.data.customer.BalanceAmount) {
+           return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, messages.E2);
         }
       }
       return customerAccountData;
   }
 
-  async creditBulkTrasacations(creditBulkAmount:CreditTransactionDto[]):Promise<AppResponse>{
-    let multipleUpdate = [];
-    for(let customer of creditBulkAmount){
-      const validateData = await this.validateCustomerTrasactionsData(customer);
-      if(validateData.code === 200){
-        const data = await this._transactionsTxn.creditTransaction(customer)
-        multipleUpdate.push(data)
-      }
+  async creditTransaction(creaditAmount:CreditTransactionDto):Promise<AppResponse> {
+    const validateData = await this.validateCustomerTrasactionsData(creaditAmount);
+    if(validateData.code !== 200) {
+      return validateData;
     }
-    return createResponse(HttpStatus.OK, messages.S30, multipleUpdate);
+    return await this._transactionsTxn.creditTransaction(creaditAmount);
   }
 
-  async debitBulkTrasacations(debitBulkAmount:any):Promise<AppResponse>{
-    let multipleUpdate = [];
-    for(let customer of debitBulkAmount){
-      const validateData = await this.validateCustomerTrasactionsData({...customer,"transactionType":"debit"});
-      console.log(customer,validateData)
-      if(validateData.code === 200){
-        const data = await this._transactionsTxn.debitTransaction(customer)
-        multipleUpdate.push(data)
-      }
+  async debitTransaction(debitAmount:DebitTransactionDto):Promise<AppResponse> {
+    const validateData = await this.validateCustomerTrasactionsData({...debitAmount,"transactionType":"debit"});
+    if(validateData.code !== 200) {
+      return validateData;
     }
-    return createResponse(HttpStatus.OK, messages.S30, multipleUpdate);
+    return await this._transactionsTxn.debitTransaction(debitAmount);
   }
 
-  async fetchCustomerTrasactions(accountNumber:string):Promise<AppResponse>{
+
+  // async creditBulkTrasacations(creditBulkAmount:CreditTransactionDto[]):Promise<AppResponse>{
+  //   const multipleUpdate:any = await Promise.all(creditBulkAmount.map(async (customer) => {
+  //     const validationResponse = await this.validateCustomerTrasactionsData(customer);
+
+  //     if (validationResponse.code !== 200) {
+  //       return Promise.reject(createResponse(HttpStatus.BAD_REQUEST, 'Validation failed for customer.'));
+  //     } 
+  //     return customer;
+  //   }
+  // ));
+  //   return await this._transactionsTxn.creditBulkAmountOfData(multipleUpdate);
+  // }
+
+  async debitBulkTrasacations(debitBulkAmount:any,batchSize:number):Promise<AppResponse>{
+    // const multipleUpdate:any = await Promise.all( debitBulkAmount.map(async (customer) => {
+    //     const validationResponse = await this.validateCustomerTrasactionsData({...customer,transactionType:"debit"});
+
+    //     if (validationResponse.code === 200) {
+    //       const data =  await this._transactionsTxn.debitTransaction(customer) 
+    //       if(data.code !== 200){
+    //         return {AccountNumber:customer.accountNumber, data:"amount debit failed"};
+    //       }
+    //       return {totalAmmount:data.data,AccountNumber:customer.accountNumber};
+    //     } else {
+    //        return createResponse(HttpStatus.BAD_REQUEST, 'Validation failed for customer.');
+    //     }
+    //   }
+    // ));
+  
+    // return createResponse(HttpStatus.OK, messages.S30, multipleUpdate);
+    const multipleUpdate:any = [];
+    for (let i = 0; i < debitBulkAmount.length; i += batchSize) {
+      const batch = debitBulkAmount.slice(i, i + batchSize);
+  
+      const batchResults = await Promise.all(
+        batch.map(async (customer) => {
+          const validationResponse = await this.validateCustomerTrasactionsData(customer);
+  
+          if (validationResponse.code !== 200) {
+            throw createResponse(
+              HttpStatus.BAD_REQUEST,
+              `Validation failed for customer ID: ${customer.accountNumber}`
+            );
+          }
+          return customer;
+        })
+      );
+  
+      multipleUpdate.push(...batchResults);
+    }
+  
+    return await this._transactionsTxn.debitBulkAmountOfData(multipleUpdate,batchSize);
+  }
+
+  async fetchCustomerTrasactions(accountNumber?:string):Promise<AppResponse>{
     return await this._transactionsTxn.fetchCustomerTrasactions(accountNumber);
   }
-}
+
+  async creditBulkTrasacations(creditBulkAmount:CreditTransactionDto[],batchSize:number):Promise<AppResponse>{
+    const multipleUpdate:any = [];
+      for (let i = 0; i < creditBulkAmount.length; i += batchSize) {
+        const batch = creditBulkAmount.slice(i, i + batchSize);
+    
+        const batchResults = await Promise.all(
+          batch.map(async (customer) => {
+            const validationResponse = await this.validateCustomerTrasactionsData(customer);
+    
+            if (validationResponse.code !== 200) {
+              throw createResponse(
+                HttpStatus.BAD_REQUEST,
+                `Validation failed for customer ID: ${customer.accountNumber}`
+              );
+            }
+            return customer;
+          })
+        );
+    
+        multipleUpdate.push(...batchResults);
+      }
+    
+      return await this._transactionsTxn.creditBulkAmountOfData(multipleUpdate,batchSize);
+    }
+  }
+

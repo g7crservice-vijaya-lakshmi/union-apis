@@ -52,7 +52,7 @@ export class DebitTransactionDto {
   @ApiProperty()
   @IsOptional()
   @IsString()
-  readonly transactionType?: string = 'credit';  
+  readonly transactionType?: string = 'debit';  
 
   @ApiProperty()
   @IsOptional()

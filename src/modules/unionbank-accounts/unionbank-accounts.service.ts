@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CreateUnionbankAccountDto } from './dto/create-unionbank-account.dto';
-import { UpdateUnionbankAccountDto } from './dto/update-unionbank-account.dto';
+import { CreateBankAccountDto } from './dto/create-unionbank-account.dto';
 import { AbstractAccountSvc } from './unionbank-account.abstract';
 import { AbstractAccountSqlDao } from '@app/database/mssql/abstract/accounts.abstract';
 import { DatabaseService } from '@app/database/database.service';
@@ -15,12 +14,11 @@ export class UnionbankAccountsService implements AbstractAccountSvc{
 
   
   async fetchCustomers():Promise<AppResponse>{
-      console.log("Inside Service")
       return await this._accountTxn.fetchCustomers();
   }
 
-  async registerAccount():Promise<AppResponse>{
-    return await this._accountTxn.fetchCustomers();
+  async registerAccount(newAcountdata:CreateBankAccountDto):Promise<AppResponse>{
+    return await this._accountTxn.registerAccount(newAcountdata);
 
   }
 
@@ -32,7 +30,7 @@ export class UnionbankAccountsService implements AbstractAccountSvc{
     return `This action returns a #${id} unionbankAccount`;
   }
 
-  update(id: number, updateUnionbankAccountDto: UpdateUnionbankAccountDto) {
+  update(id: number, updateUnionbankAccountDto: CreateBankAccountDto) {
     return `This action updates a #${id} unionbankAccount`;
   }
 

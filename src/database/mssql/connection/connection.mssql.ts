@@ -4,9 +4,6 @@ import { MsSqlConstants } from "./constants.mssql";
 import { messageFactory, messages } from "@app/shared/messages.shared";
 import {Sequelize} from "sequelize-typescript";
 import { models } from "./models.connection.mssql";
-import { BankCustomer} from "../models/bank.customers.model";
-import { BankRegistration } from "../models/bank.bank-registrations.model";
-import { BankTransaction } from "../models/bank.bank-transactions.model";
 import { SchemaGrp } from "./schmeas.mssql";
 
 export const sequelizeProvider = [
@@ -18,7 +15,6 @@ export const sequelizeProvider = [
         try{
           const dbConfig = _appConfigSvc.get('db').mssql,
           sequelize = new Sequelize({...dbConfig});
-          console.log("db connected successfully")
           for (const schemaName of SchemaGrp.ALL_SCHEMAS) {
 				await sequelize.createSchema(schemaName, {});
 			}
@@ -27,7 +23,6 @@ export const sequelizeProvider = [
           _logger.log(messages.S3, 200);
           return sequelize;
         }catch(err){
-            console.log("Inside catch....", err)
             _logger.log(messageFactory(messages.E4, [err.stack]), 200);
         }
 

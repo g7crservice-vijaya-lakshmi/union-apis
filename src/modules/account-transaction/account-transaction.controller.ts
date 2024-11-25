@@ -5,7 +5,6 @@ import { ApiTags } from '@nestjs/swagger';
 import AppLogger from '@app/core/logger/app-logger';
 import { AbstractAccountTransactionSvc } from './account.abstract';
 
-
 @Controller('transaction')
 @ApiTags('account-transaction')
 export class AccountTransactionController {
@@ -14,12 +13,12 @@ export class AccountTransactionController {
     private readonly _loggerSvc: AppLogger
   ) {}
   
-  @Get('fetch-customerdata/:account-number?')
-  fetchCustomer(@Param('accountNumber') accountNumber: string) {
+  @Get('fetch-customerdata/:accountNumber?')
+  fetchCustomer(@Param('accountNumber') accountNumber?: string) {
     return this.accountTransactionService.fetchCustomerTrasactions(accountNumber);
   }
 
-  @Post('credit-amount')
+  @Patch('credit-amount')
   creditAmount(@Body() creaditAmount:CreditTransactionDto) {
     return this.accountTransactionService.creditTransaction(creaditAmount);
   }
@@ -31,11 +30,11 @@ export class AccountTransactionController {
 
   @Patch('credit-bulk-salaries')
   creteBulkTrasacations(@Body() creditBulkAmount:CreditTransactionDto[]) {
-    return this.accountTransactionService.creditBulkTrasacations(creditBulkAmount);
+    return this.accountTransactionService.creditBulkTrasacations(creditBulkAmount,4);
   }
 
   @Patch('debit-bulk-salaries')
-  debitBulkTrasacations(@Body() debitBulkAmount:any) {
-    return this.accountTransactionService.debitBulkTrasacations(debitBulkAmount);
+  debitBulkTrasacations(@Body() debitBulkAmount:DebitTransactionDto[]) {
+    return this.accountTransactionService.debitBulkTrasacations(debitBulkAmount,4);
   }
 }

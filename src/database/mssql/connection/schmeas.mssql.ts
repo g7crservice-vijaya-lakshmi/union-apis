@@ -1,5 +1,3 @@
-// schema.enum.ts
-
 export enum Schema {
     Bank ="bank",
     Users = 'Users',              
@@ -9,7 +7,6 @@ export enum Schema {
     Loans = 'Loans',               
     Notifications = 'Notifications' 
   }
-  
   
   export class SchemaGrp {
     static readonly ALL_SCHEMAS: Schema[] = [

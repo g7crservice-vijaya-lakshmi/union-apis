@@ -12,7 +12,6 @@ import AppLogger from '@app/core/logger/app-logger';
       provide:AbstractAccountSvc,
       useClass: UnionbankAccountsService
     },
-    // UnionbankAccountsService,
     AppLogger
   ],
   exports:[

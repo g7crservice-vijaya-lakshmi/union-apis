@@ -14,7 +14,7 @@ import { CreditTransactionDto, DebitTransactionDto } from "@app/modules/account-
 export class TrasactionSqlDao implements AbstractAccountTransactionSQlDao {
   constructor(
     @Inject(MsSqlConstants.CUSTOMER_MODEL) private readonly _customers: typeof BankCustomer,
-    @Inject(MsSqlConstants.BANK_TRANSACTION_MODEL) private readonly _bankRegister: typeof BankRegistration,
+    @Inject(MsSqlConstants.BANK_REGISTRATIONS_MODEL) private readonly _bankRegister: typeof BankRegistration,
     @Inject(MsSqlConstants.BANK_TRANSACTION_MODEL) private readonly _bankTransaction: typeof BankTransaction,
     @Inject(MsSqlConstants.SEQUELIZE_PROVIDER) private _sequelize: Sequelize,
     private readonly _loggerSvc: AppLogger
@@ -31,11 +31,11 @@ export class TrasactionSqlDao implements AbstractAccountTransactionSQlDao {
 
   async fetchCustomerAccountDetails(accountNumber: string): Promise<AppResponse> {
     try {
-      const customerData = await BankRegistration.findOne({
+      const customerData = await this._bankRegister.findOne({
         attributes: ['BANKRegistrationId', 'AccountNumber', 'IFSCCode'],
         include: [
           {
-            model: BankCustomer,
+            model: this._customers,
             attributes: ['CustomerId', 'CustomerName', 'Email', 'PhoneNumber', 'Address', 'BalanceAmount'],
           }
         ],
@@ -79,11 +79,16 @@ export class TrasactionSqlDao implements AbstractAccountTransactionSQlDao {
           TransactionType: 'Credit',
           BANKRegistrationId: bankRegistrationData.data.BANKRegistrationId,
         })
+        
+        t.afterCommit(() => {
+          this._loggerSvc.log(messages.S4, 200);
+        }); 
 
         return bankRegistrationData;
       });
       return createResponse(HttpStatus.OK, messages.S29, data.data.customer.BalanceAmount);
     } catch (err) {
+      console.log(err)
       return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, messages.E2);
     }
   }
@@ -103,9 +108,8 @@ export class TrasactionSqlDao implements AbstractAccountTransactionSQlDao {
           }
         );
 
-
         if (debitAmount[0] === 0) {
-          return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, messages.E2);
+          throw new Error('No customer found or balance update failed');
         }
 
         const bankRegistrationData = await this.fetchCustomerAccountDetails(debitAmountCustomer.accountNumber);
@@ -115,23 +119,92 @@ export class TrasactionSqlDao implements AbstractAccountTransactionSQlDao {
           TransactionType: 'Debit',
           BANKRegistrationId: bankRegistrationData.data.BANKRegistrationId,
         })
+         
+        t.afterCommit(() => {
+            this._loggerSvc.log(messages.S4, 200);
+        });
 
-        return bankRegistrationData;
+        return bankRegistrationData
       });
       return createResponse(HttpStatus.OK, messages.S30, data.data.customer.BalanceAmount);
     } catch (err) {
+      console.log(err)
       return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, messages.E2);
     }
   }
 
-  async fetchCustomerTrasactions(accountNumber:string):Promise<AppResponse>{
+  async fetchCustomerTrasactions(accountNumber?:string):Promise<AppResponse>{
+    let whereCondition = {};
+
+    if(accountNumber){
+      whereCondition = {
+       [BankRegistrationColumns.AccountNumber]: accountNumber,
+      }
+    }
+
     const customersTrasactions = await this._bankTransaction.findAll({
       attributes:[BankTransactionColumns.Amount,BankTransactionColumns.TransactionType],
       include:{
         model:this._bankRegister,
-        attributes:[BankRegistrationColumns.AccountNumber,BankRegistrationColumns.AccountType,BankRegistrationColumns.IFSCCode]
+        attributes:[BankRegistrationColumns.AccountNumber,BankRegistrationColumns.AccountType,BankRegistrationColumns.IFSCCode],
+        where:whereCondition
       }
     })
   return createResponse(HttpStatus.OK, messages.S4, customersTrasactions);
   } 
+
+  async debitBulkAmountOfData(creditBulkTransactions: any, batchSize: number): Promise<AppResponse> {
+    try {
+      const results = [];
+      for (let i = 0; i < creditBulkTransactions.length; i += batchSize) {
+        const batch = creditBulkTransactions.slice(i, i + batchSize);
+  
+        const batchResults = await Promise.all(
+          batch.map(async (customer) => {
+            const validationResponse = await this.debitTransaction(customer);
+  
+            if (validationResponse.code !== 200) {
+              return Promise.reject(createResponse(HttpStatus.BAD_REQUEST, 'Error occurred while processing debit amount'));
+            }
+            return { accountNumber: customer.accountNumber, totalAmount: validationResponse.data };
+          })
+        );
+  
+        results.push(...batchResults);
+      }
+      console.log(results);
+      return createResponse(HttpStatus.OK, messages.S30, results);
+    } catch (err) {
+      console.error(err);
+      return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, messages.E2);
+    }
+  }
+  
+  async creditBulkAmountOfData(creditBulkTransactions: any, batchSize: number): Promise<AppResponse> {
+    try {
+      const results = [];
+      for (let i = 0; i < creditBulkTransactions.length; i += batchSize) {
+        const batch = creditBulkTransactions.slice(i, i + batchSize);
+  
+        const batchResults = await Promise.all(
+          batch.map(async (customer) => {
+            const validationResponse = await this.creditTransaction(customer);
+  
+            if (validationResponse.code !== 200) {
+              return Promise.reject(createResponse(HttpStatus.BAD_REQUEST, 'Error occurred while processing credit amount'));
+            }
+            return { accountNumber: customer.accountNumber, totalAmount: validationResponse.data };
+          })
+        );
+  
+        results.push(...batchResults);
+      }
+      console.log(results);
+      return createResponse(HttpStatus.OK, messages.S29, results);
+    } catch (err) {
+      console.error(err);
+      return createResponse(HttpStatus.INTERNAL_SERVER_ERROR, messages.E2);
+    }
+  }
+  
 }
